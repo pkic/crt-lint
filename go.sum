@@ -42,10 +42,10 @@ github.com/mreiferson/go-httpclient v0.0.0-20160630210159-31f0106b4474/go.mod h1
 github.com/nkovacs/streamquote v0.0.0-20170412213628-49af9bddb229/go.mod h1:0aYXnNPJ8l7uZxf45rWW1a/uME32OF0rhiYGNQ2oF2E=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/pkic/regions v0.0.0-20210329115126-19d5c098f921 h1:qIDEkgV6/lkA2KfDhP6P6dXjfOvPiuZFruCv1LWQQvM=
-github.com/pkic/regions v0.0.0-20210329115126-19d5c098f921/go.mod h1:cEzvJBLhoZRS8wc5tJqGtE690hIll7+hY09Fkw3cbyQ=
-github.com/pkic/zlint/v3 v3.0.1-0.20210330131534-2d4461a3b668 h1:9yyPtWCjViJ0s1+p5VS4BLfCH3LpXvZCh0iL7TCQZLY=
-github.com/pkic/zlint/v3 v3.0.1-0.20210330131534-2d4461a3b668/go.mod h1:CqwAzP30M5g8lFQApMTx067k/F4eg7gqEFGZuv+DYAM=
+github.com/pkic/regions v0.0.0-20210401093658-c6cf89b2df08 h1:y9HMKrsx+VqdOg5CZVmsOqRbo9atR8hHyWPFStXn5Dg=
+github.com/pkic/regions v0.0.0-20210401093658-c6cf89b2df08/go.mod h1:VNlQl801tLMzBXjA9HWliCi2velwjq5TpRxyLzSB81A=
+github.com/pkic/zlint/v3 v3.0.1-0.20210401100233-5d6a19a479b0 h1:dT49suRO3AKjUW7E4kcbLzK6l3ZTCZu5AJpyoAt1QF0=
+github.com/pkic/zlint/v3 v3.0.1-0.20210401100233-5d6a19a479b0/go.mod h1:8PAIeRjzb+Yb2TWxI102U9v9ynht1Wjdl2d9bTGJGUo=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/sirupsen/logrus v1.3.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
@@ -98,8 +98,8 @@ golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXR
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
-golang.org/x/text v0.3.4 h1:0YWbFKbhXG/wIiuHDSKpS0Iy7FSA+u45VtBMfQcFTTc=
-golang.org/x/text v0.3.4/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
+golang.org/x/text v0.3.5 h1:i6eZZ+zk0SOf0xgBpEpPD18qWcJda6q1sxt3S0kzyUQ=
+golang.org/x/text v0.3.5/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20190311212946-11955173bddd/go.mod h1:LCzVGOaR6xXOjkQ3onu1FJEFr0SW1gC7cKk1uF8kGRs=
 google.golang.org/appengine v1.6.6/go.mod h1:8WjMMxjGQR8xUklV/ARdw2HLXBOI7O7uCIDZVag1xfc=

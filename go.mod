@@ -10,4 +10,4 @@ require (
 )
 
 // Replace the pkic version on the right with `state-province` (the branch name) and run `go mod tidy` to get te latest version
-replace github.com/zmap/zlint/v3 v3.1.0 => github.com/pkic/zlint/v3 v3.0.1-0.20210330131534-2d4461a3b668
+replace github.com/zmap/zlint/v3 v3.1.0 => github.com/pkic/zlint/v3 v3.0.1-0.20210401100233-5d6a19a479b0

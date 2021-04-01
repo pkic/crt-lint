@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zmap/zcrypto/x509"
@@ -22,10 +23,78 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type service struct {
+	wgWrite sync.WaitGroup
+	wgWork  sync.WaitGroup
+	writer  chan []string
+	worker  chan []byte
+}
+
+func (s *service) doWork() {
+	for {
+		der, more := <-s.worker
+		if !more {
+			s.wgWork.Done()
+			return
+		}
+
+		cert, err := x509.ParseCertificate(der)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		if len(cert.Subject.Province) == 0 {
+			continue
+		}
+		result := test.TestLintCert("n_subject_state_unknown", cert)
+		if result.Status != lint.NA && result.Status != lint.Pass {
+			gcert, err := gc.ParseCertificate(cert.Raw)
+			if err != nil {
+				log.Println("Failed to parse in native go")
+				gcert = &gc.Certificate{}
+			}
+			revoked, ok, err := revoke.VerifyCertificateError(gcert)
+
+			s.writer <- []string{
+				fmt.Sprintf("https://crt.sh?sha256=%s", hex.EncodeToString(cert.FingerprintSHA256)),
+				cert.ValidationLevel.String(),
+				cert.Issuer.String(),
+				strings.ToUpper(cert.Subject.Country[0]),
+				cert.Subject.Province[0],
+				cert.Subject.String(),
+				cert.NotBefore.String(),
+				cert.NotAfter.String(),
+				fmt.Sprintf("%t", revoked),
+				fmt.Sprintf("%t", ok),
+				fmt.Sprintf("%v", err),
+			}
+		}
+	}
+}
+
+func (s *service) doWrite(w *csv.Writer) {
+	for {
+		line, more := <-s.writer
+		if !more {
+			w.Flush()
+			s.wgWrite.Done()
+			return
+		}
+
+		err := w.Write(line)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
 func main() {
 	var i uint64
+	var nw int
 	var filename string
 	flag.Uint64Var(&i, "offset", 0, "Records to skip")
+	flag.IntVar(&nw, "workers", 10, "Number of concurrent worker")
 	flag.StringVar(&filename, "out", "result-regions.csv", "Output filename")
 
 	flag.Usage = func() {
@@ -42,8 +111,7 @@ func main() {
 	defer f.Close()
 
 	if i == 0 {
-		writer.Write([]string{
-			"Count",
+		err = writer.Write([]string{
 			"crt.sh",
 			"Validation",
 			"Issuer",
@@ -56,6 +124,21 @@ func main() {
 			"Rev. ok",
 			"Rev. error",
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	s := service{
+		writer: make(chan []string, 10*nw),
+		worker: make(chan []byte, 100*nw),
+	}
+	s.wgWrite.Add(1)
+	go s.doWrite(writer)
+
+	for i := 0; i < nw; i++ {
+		s.wgWork.Add(1)
+		go s.doWork()
 	}
 
 	for {
@@ -68,6 +151,7 @@ func main() {
 		}
 
 		db.SetConnMaxLifetime(time.Second * 60)
+		db.SetMaxOpenConns(1)
 
 		rows, err := db.Query(`SELECT c.CERTIFICATE FROM certificate c WHERE 
 				coalesce(x509_notAfter(c.CERTIFICATE), 'infinity'::timestamp) >= date_trunc('year', now() AT TIME ZONE 'UTC')
@@ -94,43 +178,10 @@ func main() {
 				continue
 			}
 
-			cert, err := x509.ParseCertificate(der)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			if len(cert.Subject.Province) == 0 {
-				continue
-			}
-			result := test.TestLintCert("n_subject_state_unknown", cert)
-			if result.Status != lint.NA && result.Status != lint.Pass {
-				gcert, err := gc.ParseCertificate(cert.Raw)
-				if err != nil {
-					log.Println("Failed to parse in native go")
-					gcert = &gc.Certificate{}
-				}
-				revoked, ok, err := revoke.VerifyCertificateError(gcert)
-
-				writer.Write([]string{
-					fmt.Sprintf("%d", i),
-					fmt.Sprintf("https://crt.sh?sha256=%s", hex.EncodeToString(cert.FingerprintSHA256)),
-					cert.ValidationLevel.String(),
-					cert.Issuer.String(),
-					strings.ToUpper(cert.Subject.Country[0]),
-					cert.Subject.Province[0],
-					cert.Subject.String(),
-					cert.NotBefore.String(),
-					cert.NotAfter.String(),
-					fmt.Sprintf("%t", revoked),
-					fmt.Sprintf("%t", ok),
-					fmt.Sprintf("%s", err),
-				})
-			}
+			s.worker <- der
 		}
 
-		writer.Flush()
-		fmt.Println("Total processed:", i)
+		log.Println("Total processed:", i)
 
 		if err := rows.Err(); err != nil {
 			log.Println("in row", i, err)
@@ -140,4 +191,12 @@ func main() {
 		}
 		break
 	}
+
+	close(s.worker)
+	fmt.Println("Waiting on worker(s) to finish")
+	s.wgWork.Wait()
+	close(s.writer)
+	fmt.Println("Waiting on writer to finish")
+	s.wgWrite.Wait()
+	fmt.Println("Done")
 }
