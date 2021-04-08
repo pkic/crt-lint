@@ -30,6 +30,8 @@ type service struct {
 	worker  chan []byte
 }
 
+const SELECT_LIMIT int = 1000
+
 func (s *service) doWork() {
 	for {
 		der, more := <-s.worker
@@ -90,10 +92,10 @@ func (s *service) doWrite(w *csv.Writer) {
 }
 
 func main() {
-	var i uint64
+	var crtsh_id int64
 	var nw int
 	var filename string
-	flag.Uint64Var(&i, "offset", 0, "Records to skip")
+	flag.Int64Var(&crtsh_id, "offset", 0, "Last crt.sh ID processed")
 	flag.IntVar(&nw, "workers", 10, "Number of concurrent worker")
 	flag.StringVar(&filename, "out", "result-regions.csv", "Output filename")
 
@@ -110,7 +112,7 @@ func main() {
 	writer := csv.NewWriter(f)
 	defer f.Close()
 
-	if i == 0 {
+	if crtsh_id == 0 {
 		err = writer.Write([]string{
 			"crt.sh",
 			"Validation",
@@ -141,39 +143,41 @@ func main() {
 		go s.doWork()
 	}
 
-	for {
+	total_processed := 0
+	i := SELECT_LIMIT
+	for i == SELECT_LIMIT {
 		connStr := "postgres://guest@crt.sh/certwatch?port=5432&sslmode=disable&binary_parameters=yes"
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
-			log.Println(i, err)
+			log.Println(err)
 			time.Sleep(1 * time.Minute)
 			continue
 		}
+		defer db.Close()
 
 		db.SetConnMaxLifetime(time.Second * 60)
 		db.SetMaxOpenConns(1)
 
-		rows, err := db.Query(`SELECT c.CERTIFICATE FROM certificate c WHERE 
+		rows, err := db.Query(`SELECT c.ID, c.CERTIFICATE FROM certificate c WHERE 
 				coalesce(x509_notAfter(c.CERTIFICATE), 'infinity'::timestamp) >= date_trunc('year', now() AT TIME ZONE 'UTC')
 				AND x509_notAfter(c.CERTIFICATE) >= now() AT TIME ZONE 'UTC'
 				AND (SELECT x509_nameAttributes(c.CERTIFICATE, 'stateOrProvinceName', TRUE) LIMIT 1) IS NOT NULL
-			OFFSET $1`, i)
+				AND c.ID > $1
+			ORDER BY c.ID
+			LIMIT $2`, crtsh_id, SELECT_LIMIT)
 		if err != nil {
-			log.Println("in query", i, err)
-			db.Close()
+			log.Println("in query:", err)
 			time.Sleep(1 * time.Minute)
 			continue
 		}
-		log.Println("Query completed", i)
+		defer rows.Close()
+		log.Printf("Query completed (for crt.sh ID > %d)", crtsh_id)
 
+		i = 0
 		for rows.Next() {
 			i++
-			if i%10000 == 0 {
-				log.Println(i)
-			}
-
 			var der []byte
-			if err := rows.Scan(&der); err != nil {
+			if err := rows.Scan(&crtsh_id, &der); err != nil {
 				log.Println(err)
 				continue
 			}
@@ -181,15 +185,15 @@ func main() {
 			s.worker <- der
 		}
 
-		log.Println("Total processed:", i)
+		total_processed += i
+		log.Printf("Processed %d (up to crt.sh ID %d)", i, crtsh_id)
+		log.Println("Total Processed:", total_processed)
 
 		if err := rows.Err(); err != nil {
 			log.Println("in row", i, err)
-			db.Close()
 			time.Sleep(1 * time.Minute)
-			continue
+			i = SELECT_LIMIT
 		}
-		break
 	}
 
 	close(s.worker)
