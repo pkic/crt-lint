@@ -161,6 +161,7 @@ func main() {
 		rows, err := db.Query(`SELECT c.ID, c.CERTIFICATE FROM certificate c WHERE 
 				coalesce(x509_notAfter(c.CERTIFICATE), 'infinity'::timestamp) >= date_trunc('year', now() AT TIME ZONE 'UTC')
 				AND x509_notAfter(c.CERTIFICATE) >= now() AT TIME ZONE 'UTC'
+				AND x509_hasExtension(c.CERTIFICATE, '1.3.6.1.4.1.11129.2.4.3', TRUE)
 				AND (SELECT x509_nameAttributes(c.CERTIFICATE, 'stateOrProvinceName', TRUE) LIMIT 1) IS NOT NULL
 				AND c.ID > $1
 			ORDER BY c.ID
