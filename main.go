@@ -30,8 +30,6 @@ type service struct {
 	worker  chan []byte
 }
 
-const SELECT_LIMIT int = 1000
-
 func (s *service) doWork() {
 	for {
 		der, more := <-s.worker
@@ -93,10 +91,11 @@ func (s *service) doWrite(w *csv.Writer) {
 
 func main() {
 	var crtsh_id int64
-	var nw int
+	var nw, batch int
 	var filename string
 	flag.Int64Var(&crtsh_id, "offset", 0, "Last crt.sh ID processed")
 	flag.IntVar(&nw, "workers", 10, "Number of concurrent worker")
+	flag.IntVar(&batch, "batch", 1000, "Number of certificates to ask for per query")
 	flag.StringVar(&filename, "out", "result-regions.csv", "Output filename")
 
 	flag.Usage = func() {
@@ -144,8 +143,8 @@ func main() {
 	}
 
 	total_processed := 0
-	i := SELECT_LIMIT
-	for i == SELECT_LIMIT {
+	i := batch
+	for i == batch {
 		connStr := "postgres://guest@crt.sh/certwatch?port=5432&sslmode=disable&binary_parameters=yes"
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
@@ -165,7 +164,7 @@ func main() {
 				AND (SELECT x509_nameAttributes(c.CERTIFICATE, 'stateOrProvinceName', TRUE) LIMIT 1) IS NOT NULL
 				AND c.ID > $1
 			ORDER BY c.ID
-			LIMIT $2`, crtsh_id, SELECT_LIMIT)
+			LIMIT $2`, crtsh_id, batch)
 		if err != nil {
 			log.Println("in query:", err)
 			time.Sleep(1 * time.Minute)
@@ -193,7 +192,7 @@ func main() {
 		if err := rows.Err(); err != nil {
 			log.Println("in row", i, err)
 			time.Sleep(1 * time.Minute)
-			i = SELECT_LIMIT
+			i = batch
 		}
 	}
 
