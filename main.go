@@ -14,9 +14,18 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+
 	"github.com/zmap/zcrypto/x509"
 	"github.com/zmap/zlint/v3/lint"
-	_ "github.com/zmap/zlint/v3/lints/community"
+	_ "github.com/zmap/zlint/v3/lints/apple
+	_ "github.com/zmap/zlint/v3/lints/babf_brf_br"
+	_ "github.com/zmap/zlint/v3/lints/ccbf__vev"
+	_ "github.com/zmap/zlint/v3/lints/communityty"
+	_ "github.com/zmap/zlint/v3/lints/tsi
+	_ "github.com/zmap/zlint/v3/lints/mozillalla"
+	_ "github.com/zmap/zlint/v3/lints/rfc
 	"github.com/zmap/zlint/v3/test"
 
 	"github.com/cloudflare/cfssl/revoke"
@@ -24,10 +33,12 @@ import (
 )
 
 type service struct {
-	wgWrite sync.WaitGroup
-	wgWork  sync.WaitGroup
-	writer  chan []string
-	worker  chan []byte
+	wgWrite    sync.WaitGroup
+	wgWork     sync.WaitGroup
+	writer     chan []string
+	worker     chan []byte
+	lintName   string
+	lintConfig lint.Configuration
 }
 
 func (s *service) doWork() {
@@ -44,10 +55,7 @@ func (s *service) doWork() {
 			continue
 		}
 
-		if len(cert.Subject.Province) == 0 {
-			continue
-		}
-		result := test.TestLintCert("n_subject_state_unknown", cert)
+		result := test.TestLintCert(s.lintName, cert, s.lintConfig)
 		if result.Status != lint.NA && result.Status != lint.Pass {
 			gcert, err := gc.ParseCertificate(cert.Raw)
 			if err != nil {
@@ -60,11 +68,11 @@ func (s *service) doWork() {
 				fmt.Sprintf("https://crt.sh?sha256=%s", hex.EncodeToString(cert.FingerprintSHA256)),
 				cert.ValidationLevel.String(),
 				cert.Issuer.String(),
-				strings.ToUpper(cert.Subject.Country[0]),
-				cert.Subject.Province[0],
+				strings.ToUpper(strings.Join(cert.Subject.Country, ", ")),
 				cert.Subject.String(),
 				cert.NotBefore.String(),
 				cert.NotAfter.String(),
+				result.Details,
 				fmt.Sprintf("%t", revoked),
 				fmt.Sprintf("%t", ok),
 				fmt.Sprintf("%v", err),
@@ -90,19 +98,26 @@ func (s *service) doWrite(w *csv.Writer) {
 }
 
 func main() {
-	var crtsh_id int64
+	var crtID int64
 	var nw, batch int
-	var filename string
-	flag.Int64Var(&crtsh_id, "offset", 0, "Last crt.sh ID processed")
+	var filename, lintName string
+	flag.Int64Var(&crtID, "offset", 0, "Last crt.sh ID processed")
 	flag.IntVar(&nw, "workers", 10, "Number of concurrent worker")
 	flag.IntVar(&batch, "batch", 1000, "Number of certificates to ask for per query")
-	flag.StringVar(&filename, "out", "result-regions.csv", "Output filename")
+	flag.StringVar(&filename, "out", "result.csv", "Output filename")
+	flag.StringVar(&lintName, "lint", "", "Lint name (required)")
 
 	flag.Usage = func() {
 		fmt.Printf("usage: `%s [flags]`\n", path.Base(os.Args[0]))
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	if len(lintName) == 0 {
+		log.Fatal("a lint name must be provided with `-lint e_name_of_the_lint`")
+	}
+
+	p := message.NewPrinter(language.English)
 
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -111,16 +126,16 @@ func main() {
 	writer := csv.NewWriter(f)
 	defer f.Close()
 
-	if crtsh_id == 0 {
+	if crtID == 0 {
 		err = writer.Write([]string{
 			"crt.sh",
 			"Validation",
 			"Issuer",
 			"Country",
-			"Province",
 			"Subject",
 			"NotBefore",
 			"NotAfter",
+			"Error details",
 			"Rev. revoked",
 			"Rev. ok",
 			"Rev. error",
@@ -131,8 +146,10 @@ func main() {
 	}
 
 	s := service{
-		writer: make(chan []string, 10*nw),
-		worker: make(chan []byte, 100*nw),
+		writer:     make(chan []string, 10*nw),
+		worker:     make(chan []byte, 100*nw),
+		lintName:   lintName,
+		lintConfig: lint.NewEmptyConfig(),
 	}
 	s.wgWrite.Add(1)
 	go s.doWrite(writer)
@@ -157,27 +174,28 @@ func main() {
 		db.SetConnMaxLifetime(time.Second * 60)
 		db.SetMaxOpenConns(1)
 
+		// TODO: Add configurable query filters
+		// AND (SELECT x509_nameAttributes(c.CERTIFICATE, 'organizationName', TRUE) LIMIT 1) IS NOT NULL
 		rows, err := db.Query(`SELECT c.ID, c.CERTIFICATE FROM certificate c WHERE 
 				coalesce(x509_notAfter(c.CERTIFICATE), 'infinity'::timestamp) >= date_trunc('year', now() AT TIME ZONE 'UTC')
 				AND x509_notAfter(c.CERTIFICATE) >= now() AT TIME ZONE 'UTC'
 				AND x509_hasExtension(c.CERTIFICATE, '1.3.6.1.4.1.11129.2.4.3', TRUE)
-				AND (SELECT x509_nameAttributes(c.CERTIFICATE, 'stateOrProvinceName', TRUE) LIMIT 1) IS NOT NULL
 				AND c.ID > $1
 			ORDER BY c.ID
-			LIMIT $2`, crtsh_id, batch)
+			LIMIT $2`, crtID, batch)
 		if err != nil {
 			log.Println("in query:", err)
 			time.Sleep(1 * time.Minute)
 			continue
 		}
 		defer rows.Close()
-		log.Printf("Query completed (for crt.sh ID > %d)", crtsh_id)
+		p.Printf("Query completed (for crt.sh ID > %d)\n", crtID)
 
 		i = 0
 		for rows.Next() {
 			i++
 			var der []byte
-			if err := rows.Scan(&crtsh_id, &der); err != nil {
+			if err := rows.Scan(&crtID, &der); err != nil {
 				log.Println(err)
 				continue
 			}
@@ -186,11 +204,11 @@ func main() {
 		}
 
 		total_processed += i
-		log.Printf("Processed %d (up to crt.sh ID %d)", i, crtsh_id)
-		log.Println("Total Processed:", total_processed)
+		p.Printf("Processed %d (up to crt.sh ID %d)\n", i, crtID)
+		p.Printf("[%s] Total Processed: %d\n", time.Now().Format("2006-01-02 15:04:05"), total_processed)
 
 		if err := rows.Err(); err != nil {
-			log.Println("in row", i, err)
+			p.Printf("[%s] in row %d: %s", time.Now().Format("2006-01-02 15:04:05"), i, err)
 			time.Sleep(1 * time.Minute)
 			i = batch
 		}
