@@ -19,13 +19,13 @@ import (
 
 	"github.com/zmap/zcrypto/x509"
 	"github.com/zmap/zlint/v3/lint"
-	_ "github.com/zmap/zlint/v3/lints/apple
-	_ "github.com/zmap/zlint/v3/lints/babf_brf_br"
-	_ "github.com/zmap/zlint/v3/lints/ccbf__vev"
-	_ "github.com/zmap/zlint/v3/lints/communityty"
-	_ "github.com/zmap/zlint/v3/lints/tsi
-	_ "github.com/zmap/zlint/v3/lints/mozillalla"
-	_ "github.com/zmap/zlint/v3/lints/rfc
+	_ "github.com/zmap/zlint/v3/lints/apple"
+	_ "github.com/zmap/zlint/v3/lints/cabf_br"
+	_ "github.com/zmap/zlint/v3/lints/cabf_ev"
+	_ "github.com/zmap/zlint/v3/lints/community"
+	_ "github.com/zmap/zlint/v3/lints/etsi"
+	_ "github.com/zmap/zlint/v3/lints/mozilla"
+	_ "github.com/zmap/zlint/v3/lints/rfc"
 	"github.com/zmap/zlint/v3/test"
 
 	"github.com/cloudflare/cfssl/revoke"
