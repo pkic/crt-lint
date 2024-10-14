@@ -2832,8 +2832,8 @@ github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300 h1:DZH5n7L3L8RxKdSyJH
 github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300/go.mod h1:mOd4yUMgn2fe2nV9KXsa9AyQBFZGzygVPovsZR+Rl5w=
 github.com/zmap/zlint/v3 v3.0.0/go.mod h1:paGwFySdHIBEMJ61YjoqT4h7Ge+fdYG4sUQhnTb1lJ8=
 github.com/zmap/zlint/v3 v3.5.0/go.mod h1:JkNSrsDJ8F4VRtBZcYUQSvnWFL7utcjDIn+FE64mlBI=
-github.com/zmap/zlint/v3 v3.6.3 h1:NacKyNyZXx1pDVzJNPEwu3q1bl17b6Op6XbKYPa9kPk=
-github.com/zmap/zlint/v3 v3.6.3/go.mod h1:KQLVUquVaO5YJDl5a4k/7RPIbIW2v66+sRoBPNZusI8=
+github.com/zmap/zlint/v3 v3.6.4 h1:r2kHfRF7mIsxW0IH4Og2iZnrlpCLTZBFjnXy1x/ZnZI=
+github.com/zmap/zlint/v3 v3.6.4/go.mod h1:KQLVUquVaO5YJDl5a4k/7RPIbIW2v66+sRoBPNZusI8=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.5/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
