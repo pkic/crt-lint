@@ -7,5 +7,5 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300
 	github.com/zmap/zlint/v3 v3.6.4
-	golang.org/x/text v0.19.0
+	golang.org/x/text v0.20.0
 )
